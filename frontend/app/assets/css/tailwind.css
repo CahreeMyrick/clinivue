@@ -1,0 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --cv-bg: #ecf9f8;
+  --cv-surface: #ffffff;
+  --cv-surface-soft: #f7fcfc;
+  --cv-text: #103340;
+  --cv-muted: #5a7680;
+  --cv-border: #c5e5e2;
+  --cv-primary: #0b7a75;
+  --cv-primary-strong: #085f5c;
+  --cv-ring: rgba(11, 122, 117, 0.24);
+  --cv-positive: #0f766e;
+  --cv-danger: #be123c;
+}
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
+  color: var(--cv-text);
+  background: var(--cv-bg);
+}
+
+@keyframes bgDrift {
+  0%,
+  100% {
+    background-position: 0% 0%, 100% 0%, center;
+  }
+  50% {
+    background-position: 12% 9%, 88% 7%, center;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  .cv-shell {
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at 12% 10%, rgba(20, 184, 166, 0.2), transparent 35%),
+      radial-gradient(circle at 88% 8%, rgba(14, 165, 233, 0.14), transparent 32%),
+      linear-gradient(160deg, #f3fdfd 0%, #ecf9f8 52%, #e9f5f6 100%);
+    animation: bgDrift 18s ease-in-out infinite;
+  }
+
+  .cv-card {
+    border: 1px solid var(--cv-border);
+    border-radius: 1rem;
+    background: var(--cv-surface);
+    box-shadow: 0 16px 45px rgba(16, 51, 64, 0.08);
+    padding: 1.4rem;
+  }
+
+  .cv-card-soft {
+    border: 1px solid var(--cv-border);
+    border-radius: 0.9rem;
+    background: var(--cv-surface-soft);
+    padding: 1rem;
+  }
+
+  .cv-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--cv-muted);
+    font-weight: 700;
+  }
+
+  .cv-title {
+    margin-top: 0.35rem;
+    font-family: 'Space Grotesk', 'Manrope', sans-serif;
+    font-size: 1.7rem;
+    line-height: 1.15;
+    color: #083044;
+    font-weight: 700;
+  }
+
+  .cv-subtitle {
+    margin-top: 0.4rem;
+    color: var(--cv-muted);
+    font-size: 0.96rem;
+  }
+
+  .cv-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #215362;
+  }
+
+  .cv-input {
+    width: 100%;
+    border: 1px solid var(--cv-border);
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 0.7rem 0.85rem;
+    margin-top: 0.35rem;
+    color: #0a2b39;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .cv-input:focus-visible {
+    outline: none;
+    border-color: var(--cv-primary);
+    box-shadow: 0 0 0 4px var(--cv-ring);
+  }
+
+  .cv-btn {
+    border: 0;
+    border-radius: 0.75rem;
+    padding: 0.72rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f0ffff;
+    background: linear-gradient(135deg, var(--cv-primary), #0d9488);
+    cursor: pointer;
+    transition: transform 0.18s ease, filter 0.18s ease;
+  }
+
+  .cv-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(0.96);
+  }
+
+  .cv-btn:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
+  }
+
+  .cv-btn-secondary {
+    background: #ffffff;
+    color: var(--cv-primary-strong);
+    border: 1px solid var(--cv-border);
+  }
+
+  .cv-link {
+    color: var(--cv-primary-strong);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 600;
+  }
+
+  .cv-link:hover {
+    color: #064e4c;
+  }
+
+  .cv-status {
+    border-radius: 999px;
+    border: 1px solid #b9ddd9;
+    background: #ecfdfb;
+    color: #115e59;
+    padding: 0.25rem 0.62rem;
+    font-weight: 700;
+    font-size: 0.78rem;
+    width: fit-content;
+  }
+
+  .cv-error {
+    color: var(--cv-danger);
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+
+  .cv-success {
+    color: var(--cv-positive);
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+
+  .cv-animate-fade-up {
+    animation: fadeUp 0.45s ease both;
+  }
+}
