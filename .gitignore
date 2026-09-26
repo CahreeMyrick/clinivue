@@ -1,0 +1,49 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Build and test artifacts
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local secrets (keep example configuration trackable)
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Downloaded models and checkpoints
+models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+chex_stage3*.zip
+*.part
+
+# Generated inference and training output
+/result.png
+/outputs/
+/multirun/
+wandb/
+*.log
+
+# macOS and editor temporary files
+.DS_Store
+._*
+*.swp
+*.swo
+*~
+
+chex/
