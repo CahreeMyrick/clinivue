@@ -58,7 +58,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <section class="mx-auto max-w-md cv-card cv-animate-fade-up">
+  <section class="mx-auto max-w-lg cv-card cv-animate-fade-up">
     <p class="cv-kicker">{{ requestedRole ? `${requestedRole} Access` : 'Clinivue Access' }}</p>
     <h1 class="cv-title">{{ requestedRole ? `${requestedRole} Sign In` : 'Welcome Back' }}</h1>
     <p class="cv-subtitle">Sign in to continue to your care workflow.</p>
@@ -80,9 +80,12 @@ async function onSubmit() {
 
       <p v-if="message" class="cv-error">{{ message }}</p>
 
-      <div class="mt-1 flex items-center justify-between text-sm">
-        <NuxtLink class="cv-link" to="/auth/sign-up">Need access?</NuxtLink>
-      </div>
+      <p class="text-sm text-slate-600">
+        Don't have an account?
+        <NuxtLink class="cv-link" to="/auth/sign-up">Sign up</NuxtLink>
+      </p>
+
+      <NuxtLink class="cv-link text-sm" to="/">Continue as guest</NuxtLink>
     </form>
   </section>
 </template>

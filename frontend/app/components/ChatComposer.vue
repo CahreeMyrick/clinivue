@@ -34,8 +34,7 @@ function submit() {
       <ImageUploader v-model="images" @error="emit('imageError', $event)" />
     </div>
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-xs text-slate-500">Shift+Enter adds a new line.</p>
-      <button class="cv-btn" type="submit" :disabled="!text.trim() && !images.length">Send</button>
+      <button class="cv-btn ml-auto" type="submit" :disabled="!text.trim() && !images.length">Send</button>
     </div>
   </form>
 </template>

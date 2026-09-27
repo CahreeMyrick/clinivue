@@ -1,82 +1,30 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type { ChatComposerPayload, ChatMessage } from '~/types/chat'
+import type { ChatMessage } from '~/types/chat'
+import { createChatActions } from './_sendMessage'
 
 const imageError = ref('')
 const messages = ref<ChatMessage[]>([])
 const conversationId = crypto.randomUUID()
-const chatEndpoint = ''
+const chatEndpoint = '' //TODO: Replace with actual chat endpoint URL in Backend
+
+const { sendMessage, loadHistory, cleanup } = createChatActions({
+  messages,
+  imageError,
+  conversationId,
+  chatEndpoint
+})
 
 function onImageError(message: string) {
   imageError.value = message
 }
 
-function createId() {
-  return crypto.randomUUID()
-}
-
-function addImageUrls(files: File[]) {
-  return files.map((file) => URL.createObjectURL(file))
-}
-
-async function sendMessage(payload: ChatComposerPayload) {
-  imageError.value = ''
-  const imageUrls = addImageUrls(payload.images)
-  const userMessage: ChatMessage = {
-    id: createId(),
-    sender: 'user',
-    text: payload.text,
-    imageUrls,
-    createdAt: new Date().toISOString()
-  }
-  const loadingId = createId()
-  messages.value.push(userMessage, {
-    id: loadingId,
-    sender: 'assistant',
-    text: '',
-    createdAt: new Date().toISOString(),
-    loading: true
-  })
-
-  if (!chatEndpoint) {
-    messages.value = messages.value.map((message) => message.id === loadingId
-      ? { ...message, loading: false, error: true, text: '' }
-      : message)
-    return
-  }
-
-  try {
-    const formData = new FormData()
-    formData.append('conversationId', conversationId)
-    formData.append('text', payload.text)
-    payload.images.forEach((file) => formData.append('images', file))
-
-    const response = await $fetch<{ message?: { text?: string } | string; text?: string }>(chatEndpoint, {
-      method: 'POST',
-      body: formData
-    })
-    const responseText = typeof response.message === 'string'
-      ? response.message
-      : response.message?.text ?? response.text ?? ''
-
-    messages.value = messages.value.map((message) => message.id === loadingId
-      ? { ...message, loading: false, text: responseText }
-      : message)
-  } catch {
-    messages.value = messages.value.map((message) => message.id === loadingId
-      ? { ...message, loading: false, error: true }
-      : message)
-  }
-}
-
 onMounted(() => {
-  if (!chatEndpoint) return
-  void $fetch<ChatMessage[]>(`${chatEndpoint}/history`, { query: { conversationId } })
-    .then((history) => { messages.value = history })
+  void loadHistory()
 })
 
 onBeforeUnmount(() => {
-  messages.value.flatMap((message) => message.imageUrls ?? []).forEach((url) => URL.revokeObjectURL(url))
+  cleanup()
 })
 </script>
 
@@ -92,9 +40,8 @@ onBeforeUnmount(() => {
 
     <section class="mx-auto max-w-3xl">
       <div class="mb-7 text-center">
-        <p class="cv-kicker">A calmer way to connect</p>
+        <p class="cv-kicker">Medical Conversations Made Easy</p>
         <h1 class="cv-title mt-2 text-3xl">What can we help with?</h1>
-        <p class="cv-subtitle">Start a conversation with your care team.</p>
       </div>
 
       <section aria-label="Chat" class="cv-card overflow-hidden p-0">

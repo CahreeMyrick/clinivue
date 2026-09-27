@@ -39,7 +39,7 @@ async function onSubmit() {
       }
     })
     if (error) {
-      errorMessage.value = error
+      errorMessage.value = error.message
       return
     }
 
@@ -64,7 +64,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <section class="mx-auto max-w-xl cv-card cv-animate-fade-up">
+  <section class="mx-auto max-w-2xl cv-card cv-animate-fade-up">
     <p class="cv-kicker">Join Clinivue</p>
     <h1 class="cv-title">Create Your Account</h1>
     <p class="cv-subtitle">Choose your care role and enter your details to get started.</p>
@@ -79,7 +79,7 @@ async function onSubmit() {
           >
             <input v-model="selectedRole" class="sr-only" type="radio" name="role" value="clinician" required>
             <span class="block text-sm font-bold text-slate-900">Clinician</span>
-            <span class="mt-1 block text-xs text-slate-600">I provide care</span>
+            <span class="mt-1 block text-xs text-slate-600">I am a medical professional and want to use Clinivue to aid my practice.</span>
           </label>
           <label
             class="cursor-pointer rounded-xl border p-3 transition-colors"
@@ -87,7 +87,7 @@ async function onSubmit() {
           >
             <input v-model="selectedRole" class="sr-only" type="radio" name="role" value="patient" required>
             <span class="block text-sm font-bold text-slate-900">Patient</span>
-            <span class="mt-1 block text-xs text-slate-600">I receive care</span>
+            <span class="mt-1 block text-xs text-slate-600">I am not a medical professional and want to use Clinivue to learn more about my health.</span>
           </label>
         </div>
       </fieldset>
@@ -124,6 +124,8 @@ async function onSubmit() {
         Already have an account?
         <NuxtLink class="cv-link" to="/auth/sign-in">Sign in</NuxtLink>
       </p>
+
+      <NuxtLink class="cv-link text-sm" to="/">Continue as guest</NuxtLink>
     </form>
   </section>
 </template>
