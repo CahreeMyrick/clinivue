@@ -4,18 +4,15 @@ import re
 from pathlib import Path
 from typing import Any
 
+import requests
 import torch
+import matplotlib.pyplot as plt
 from PIL import Image
 from transformers import AutoModelForCausalLM, AutoProcessor
 
 
 MODEL_ID = "microsoft/maira-2"
 
-
-# ---------------------------------------------------------
-# Simple vocabulary-based entity extraction.
-# Replace this later with a medical NER / ontology linker.
-# ---------------------------------------------------------
 
 FINDINGS = [
     "pleural effusion",
@@ -68,6 +65,7 @@ class MairaPipeline:
         self.processor = AutoProcessor.from_pretrained(
             model_id,
             trust_remote_code=True,
+            use_fast=True
         )
 
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -105,22 +103,6 @@ class MairaPipeline:
         technique: str = "",
         comparison: str = "",
     ) -> list[Any]:
-        """
-        Generate a chest X-ray report with grounding information.
-
-        Expected approximate output:
-
-        [
-            (
-                "There is a small right pleural effusion.",
-                [(x1, y1, x2, y2)]
-            ),
-            (
-                "No pneumothorax.",
-                None
-            )
-        ]
-        """
 
         image = self.load_image(image_path)
 
@@ -133,7 +115,7 @@ class MairaPipeline:
             comparison=comparison,
             prior_report=None,
             return_tensors="pt",
-            get_grounding=True,
+            get_grounding=False,
         )
 
         inputs = inputs.to(self.device)
@@ -168,20 +150,6 @@ class MairaPipeline:
         image_path: str | Path,
         phrase: str,
     ) -> Any:
-        """
-        Ask MAIRA-2 to localize a specific phrase.
-
-        Example:
-
-            phrase = "Pleural effusion"
-
-        Expected approximate output:
-
-            (
-                "Pleural effusion.",
-                [(x1, y1, x2, y2)]
-            )
-        """
 
         image = self.load_image(image_path)
 
@@ -232,12 +200,6 @@ def contains_term(text: str, term: str) -> bool:
 
 
 def extract_entities(text: str) -> dict[str, list[str]]:
-    """
-    Extract simple medical entities from a generated finding.
-
-    This is intentionally simple so you can see the pipeline clearly.
-    """
-
     entities = {
         "findings": [],
         "anatomy": [],
@@ -267,13 +229,11 @@ def extract_entities(text: str) -> dict[str, list[str]]:
 def build_structured_findings(
     grounded_report: list[Any],
 ) -> list[dict[str, Any]]:
-    """
-    Convert MAIRA-2 output into a cleaner structure.
-    """
 
     results = []
 
     for item in grounded_report:
+
         if isinstance(item, tuple) and len(item) == 2:
             text, boxes = item
         else:
@@ -296,6 +256,7 @@ def build_structured_findings(
 def print_results(
     structured_results: list[dict[str, Any]],
 ) -> None:
+
     print("\n" + "=" * 70)
     print("STRUCTURED MAIRA-2 OUTPUT")
     print("=" * 70)
@@ -307,9 +268,7 @@ def print_results(
         print(f"\nFinding {index}")
         print("-" * 40)
 
-        print(
-            f"Text: {result['text']}"
-        )
+        print(f"Text: {result['text']}")
 
         print(
             f"Findings: "
@@ -337,68 +296,166 @@ def print_results(
         )
 
 
+def get_sample_data() -> dict[str, Image.Image | str]:
+    """
+    Download chest X-rays from IU-Xray.
+    """
+
+    frontal_image_url = (
+        "https://openi.nlm.nih.gov/imgs/512/145/145/"
+        "CXR145_IM-0290-1001.png"
+    )
+
+    lateral_image_url = (
+        "https://openi.nlm.nih.gov/imgs/512/145/145/"
+        "CXR145_IM-0290-2001.png"
+    )
+
+    def download_and_open(url: str) -> Image.Image:
+        response = requests.get(
+            url,
+            headers={"User-Agent": "MAIRA-2"},
+            stream=True,
+        )
+
+        response.raise_for_status()
+
+        return Image.open("xray.png").convert("RGB")
+
+    frontal_image = download_and_open(
+        frontal_image_url
+    )
+
+    lateral_image = download_and_open(
+        lateral_image_url
+    )
+
+    sample_data = {
+        "frontal": frontal_image,
+        "lateral": lateral_image,
+        "indication": "None.",
+        "comparison": "None.",
+        "technique": "PA view of the chest.",
+        "phrase": "None.",
+    }
+
+    return sample_data
+
+
 def main():
-    # Change this to your chest X-ray image.
-    image_path = "chest_xray.png"
 
-    pipeline = MairaPipeline()
+    sample_data = get_sample_data()
 
     # -----------------------------------------------------
-    # Step 1:
-    # Generate a grounded radiology report.
+    # Load MAIRA-2
     # -----------------------------------------------------
 
-    grounded_report = pipeline.generate_grounded_report(
-        image_path=image_path,
-        indication="",
-        technique="",
-        comparison="",
+    print("Loading MAIRA-2...")
+
+    processor = AutoProcessor.from_pretrained(
+        MODEL_ID,
+        trust_remote_code=True,
+        use_fast=True
     )
 
-    print("\nRaw MAIRA-2 output:")
-    print(grounded_report)
-
-    # -----------------------------------------------------
-    # Step 2:
-    # Convert generated findings into structured entities.
-    # -----------------------------------------------------
-
-    structured_results = build_structured_findings(
-        grounded_report
-    )
-
-    print_results(
-        structured_results
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        trust_remote_code=True,
     )
 
     # -----------------------------------------------------
-    # Step 3:
-    # Optionally ground every detected abnormality again.
+    # Select device
     # -----------------------------------------------------
 
-    print("\n" + "=" * 70)
-    print("PHRASE GROUNDING")
-    print("=" * 70)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
 
-    unique_findings = set()
+    print(f"Using device: {device}")
 
-    for result in structured_results:
-        for finding in result["entities"]["findings"]:
-            unique_findings.add(finding)
+    model = model.eval()
+    model = model.to(device)
 
-    for finding in sorted(unique_findings):
-        print(
-            f"\nGrounding phrase: {finding}"
+    # -----------------------------------------------------
+    # Prepare input
+    # -----------------------------------------------------
+
+    processed_inputs = (
+        processor.format_and_preprocess_reporting_input(
+            current_frontal=sample_data["frontal"],
+            current_lateral=None,
+            prior_frontal=None,
+            indication=sample_data["indication"],
+            technique=sample_data["technique"],
+            comparison=sample_data["comparison"],
+            prior_report=None,
+            return_tensors="pt",
+            get_grounding=False,
+        )
+    )
+
+    processed_inputs = processed_inputs.to(device)
+
+    # -----------------------------------------------------
+    # Generate report
+    # -----------------------------------------------------
+
+    print("Generating report...")
+
+    with torch.no_grad():
+
+        output_decoding = model.generate(
+            **processed_inputs,
+            max_new_tokens=300,
+            use_cache=True,
         )
 
-        grounding_result = pipeline.ground_phrase(
-            image_path=image_path,
-            phrase=finding,
-        )
+    # -----------------------------------------------------
+    # Decode output
+    # -----------------------------------------------------
 
-        print(
-            grounding_result
+    prompt_length = (
+        processed_inputs["input_ids"].shape[-1]
+    )
+
+    decoded_text = processor.decode(
+        output_decoding[0][prompt_length:],
+        skip_special_tokens=True,
+    )
+
+    decoded_text = decoded_text.lstrip()
+
+    # -----------------------------------------------------
+    # Convert MAIRA-2 output
+    # -----------------------------------------------------
+
+    prediction = (
+        processor
+        .convert_output_to_plaintext_or_grounded_sequence(
+            decoded_text
         )
+    )
+
+    print("\nParsed prediction:")
+    print(prediction)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Display the first image on the left axis
+    axes[0].imshow(sample_data["frontal"])
+    axes[0].axis('off')  # Hide pixel coordinate axes
+    axes[0].set_title('First Image')
+
+    # Display the second image on the right axis
+    axes[1].imshow(sample_data["lateral"])
+    axes[1].axis('off')
+    axes[1].set_title('Second Image')
+
+    # Show the side-by-side plot
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
