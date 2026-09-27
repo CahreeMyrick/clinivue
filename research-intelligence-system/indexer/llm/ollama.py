@@ -3,7 +3,37 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import requests
+from google import genai
 
+client = genai.Client()
+
+@dataclass(frozen=True)
+class GeminiLLM:
+    """Local LLM client for Gemini."""
+
+    model: str = "gemini-3-flash-preview"
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        temperature: float = 0.0,
+    ) -> str:
+        config = {"temperature": temperature}
+        if system:
+            config["system_instruction"] = system
+
+        response = client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config=config,
+        )
+
+        if not response.text:
+            raise RuntimeError("Gemini response did not contain text.")
+
+        return response.text.strip()
 
 @dataclass(frozen=True)
 class OllamaLLM:
