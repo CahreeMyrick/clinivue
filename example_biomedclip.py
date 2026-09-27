@@ -1,10 +1,7 @@
-import argparse
-from pathlib import Path
-
 import torch
 import matplotlib.pyplot as plt
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from open_clip import create_model_from_pretrained, get_tokenizer
 
 
@@ -16,6 +13,13 @@ BIOMEDCLIP_ID = (
     "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
 )
 
+biomed_model, biomed_preprocess = create_model_from_pretrained(
+    BIOMEDCLIP_ID
+)
+
+biomed_tokenizer = get_tokenizer(BIOMEDCLIP_ID)
+
+biomed_model.eval()
 
 
 LABELS = [
@@ -31,10 +35,6 @@ LABELS = [
 
 
 def biomedclip_rank(image: Image.Image):
-    biomed_model, biomed_preprocess = create_model_from_pretrained(BIOMEDCLIP_ID)
-    biomed_tokenizer = get_tokenizer(BIOMEDCLIP_ID)
-    biomed_model.eval()
-
     prompts = [
         f"chest X-ray showing {label}"
         for label in LABELS
@@ -44,7 +44,7 @@ def biomedclip_rank(image: Image.Image):
         image
     ).unsqueeze(0)
 
-    text_tokens = biomed_tokenizer(prompts, context_length=256)
+    text_tokens = biomed_tokenizer(prompts)
 
     with torch.no_grad():
         image_features = biomed_model.encode_image(
@@ -86,7 +86,54 @@ def biomedclip_rank(image: Image.Image):
 # ChEX Adapter
 # ============================================================
 
-from chex_localization import CheXLocalizationService, DEFAULT_CHECKPOINT
+class CheXLocalizationService:
+    """
+    Adapter around the ChEX repository.
+
+    Expected output format:
+
+    [
+        {
+            "label": "pleural effusion",
+            "score": 0.88,
+            "box": [x1, y1, x2, y2],
+            "description": "..."
+        }
+    ]
+    """
+
+    def __init__(self):
+        self.model = None
+
+    def load(self):
+        """
+        Load ChEX checkpoint and configuration here.
+
+        The exact code depends on the ChEX repo's internal
+        Hydra/model-loading configuration.
+        """
+        raise NotImplementedError(
+            "Connect this adapter to the ChEX repository model loader."
+        )
+
+    def localize(
+        self,
+        image: Image.Image,
+        prompt: str
+    ):
+        """
+        Run:
+
+            image + textual prompt
+                    ↓
+                   ChEX
+                    ↓
+            boxes + descriptions
+        """
+
+        raise NotImplementedError(
+            "Connect this method to ChEX inference."
+        )
 
 
 # ============================================================
@@ -124,116 +171,117 @@ def draw_detections(
 # Main
 # ============================================================
 
-def main():
-    parser = argparse.ArgumentParser(description="Rank chest X-ray concepts with BioMedCLIP.")
-    parser.add_argument("image", nargs="?", type=Path,
-                        default=Path(__file__).with_name("chest_xray.png"))
-    parser.add_argument("--output", type=Path, help="Save the plot instead of opening a window.")
-    parser.add_argument("--chex-checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
-    parser.add_argument("--chex-device", default="cpu", choices=["cpu", "cuda", "mps"])
-    parser.add_argument("--chex-threshold", type=float, default=0.5)
-    args = parser.parse_args()
-    if not args.chex_checkpoint.expanduser().is_file():
-        parser.error(f"ChEX checkpoint not found: {args.chex_checkpoint}. "
-                     "See README.md and pass --chex-checkpoint PATH.")
-    image_path = args.image
+image_path = "xray.png"
 
-    image = Image.open(
-        image_path
-    ).convert("RGB")
+image = Image.open(
+    image_path
+).convert("RGB")
 
 
-    # ------------------------------------------------------------
-    # 1. BioMedCLIP concept ranking
-    # ------------------------------------------------------------
+# ------------------------------------------------------------
+# 1. BioMedCLIP concept ranking
+# ------------------------------------------------------------
 
-    ranked = biomedclip_rank(image)
+ranked = biomedclip_rank(image)
 
-    print("\nBioMedCLIP concept ranking:\n")
+print("\nBioMedCLIP concept ranking:\n")
 
-    for label, score in ranked:
-        print(
-            f"{label:25s} {score:.4f}"
-        )
-
-
-    # ------------------------------------------------------------
-    # 2. Select concepts worth localizing
-    # ------------------------------------------------------------
-
-    top_k = [(label, score) for label, score in ranked
-             if label != "normal chest X-ray"][:3]
-
-    candidate_prompts = [
-        label
-        for label, score in top_k
-    ]
-
-    print("\nCandidate concepts for ChEX:")
-
-    for concept in candidate_prompts:
-        print(f"- {concept}")
-
-
-    # ------------------------------------------------------------
-    # 3. ChEX localization
-    # ------------------------------------------------------------
-
-    chex = CheXLocalizationService(
-        args.chex_checkpoint, args.chex_device, args.chex_threshold
-    ).load()
-    detections = chex.localize_many(image, candidate_prompts)
-    print(f"\nChEX returned {len(detections)} regions:")
-    for detection in detections:
-        print(f"{detection['label']:25s} {detection['score']:.4f} {detection['box']}")
-    if not detections:
-        print("No regions exceeded the ChEX region-weight threshold.")
-
-    # ------------------------------------------------------------
-    # 4. Draw localized findings
-    # ------------------------------------------------------------
-
-    visualized = draw_detections(
-        image,
-        detections
+for label, score in ranked:
+    print(
+        f"{label:25s} {score:.4f}"
     )
 
 
-    # ------------------------------------------------------------
-    # 5. Show combined BioMedCLIP + ChEX result
-    # ------------------------------------------------------------
+# ------------------------------------------------------------
+# 2. Select concepts worth localizing
+# ------------------------------------------------------------
 
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(14, 7)
-    )
+top_k = ranked[:3]
 
+candidate_prompts = [
+    label
+    for label, score in top_k
+]
 
-    axes[0].imshow(image)
-    axes[0].axis("off")
+print("\nCandidate concepts for ChEX:")
 
-    axes[0].set_title(
-        "Original chest X-ray"
-    )
+for concept in candidate_prompts:
+    print(f"- {concept}")
 
 
-    axes[1].imshow(visualized)
-    axes[1].axis("off")
+# ------------------------------------------------------------
+# 3. ChEX localization
+# ------------------------------------------------------------
 
-    axes[1].set_title(
-        "ChEX localized regions"
-    )
+chex = CheXLocalizationService()
+
+# After connecting the ChEX repo:
+#
+# chex.load()
+#
+# detections = []
+#
+# for concept in candidate_prompts:
+#     result = chex.localize(
+#         image=image,
+#         prompt=concept
+#     )
+#
+#     detections.extend(result)
 
 
-    plt.tight_layout()
-    if args.output:
-        fig.savefig(args.output, dpi=150, bbox_inches="tight")
-        print(f"\nSaved plot to {args.output}")
-    else:
-        plt.show()
-    plt.close(fig)
+# Temporary mock result so the rest of the pipeline works.
+# REMOVE once ChEX inference is connected.
+
+detections = [
+    {
+        "label": "pleural effusion",
+        "score": 0.86,
+        "box": [300, 350, 500, 550],
+        "description": (
+            "Localized region consistent with "
+            "pleural fluid accumulation."
+        ),
+    }
+]
 
 
-if __name__ == "__main__":
-    main()
+# ------------------------------------------------------------
+# 4. Draw localized findings
+# ------------------------------------------------------------
+
+visualized = draw_detections(
+    image,
+    detections
+)
+
+
+# ------------------------------------------------------------
+# 5. Show combined BioMedCLIP + ChEX result
+# ------------------------------------------------------------
+
+fig, axes = plt.subplots(
+    1,
+    2,
+    figsize=(14, 7)
+)
+
+
+axes[0].imshow(image)
+axes[0].axis("off")
+
+axes[0].set_title(
+    "Original chest X-ray"
+)
+
+
+axes[1].imshow(visualized)
+axes[1].axis("off")
+
+axes[1].set_title(
+    "Localized findings"
+)
+
+
+plt.tight_layout()
+plt.show()

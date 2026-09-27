@@ -10,7 +10,7 @@ __pycache__/
 
 # Build and test artifacts
 build/
-dist/
+/dist/
 *.egg-info/
 .coverage
 .coverage.*
