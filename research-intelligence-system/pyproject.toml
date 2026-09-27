@@ -12,6 +12,8 @@ dependencies = [
     "pyyaml>=6.0.3",
     "deepeval>=4.2.2",
     "ollama>=0.6.2",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.54.0",
 ]
 
 [project.optional-dependencies]
