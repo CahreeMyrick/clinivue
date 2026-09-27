@@ -1,5 +1,5 @@
 """
-Clinivue backend -- minimal version matching the frontend's chat contract.
+Clinivue backend matching the frontend's chat contract.
 
 The frontend (frontend/app/pages/index.vue) expects:
   POST {chatEndpoint}
@@ -9,17 +9,12 @@ The frontend (frontend/app/pages/index.vue) expects:
   GET {chatEndpoint}/history?conversationId=...
     -> ChatMessage[]   (see frontend/app/types/chat.ts)
 
-This version stores conversations in memory (resets on restart) and returns
-a placeholder assistant reply instead of running the real vision/RAG
-pipeline described in docs/ideas.md. Swap `generate_reply()` for a real
-model call when that's ready -- everything else (contract, image handling,
-history) is already wired to match the frontend.
 
 Run with:
-    uvicorn main:app --reload
+uvicorn main:app --reload
 
 Then in frontend/app/pages/index.vue, set:
-    const chatEndpoint = 'http://127.0.0.1:8000/chat'
+const chatEndpoint = 'http://127.0.0.1:8000/chat'
 """
 
 import uuid
@@ -37,7 +32,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Clinivue Backend")
 
-# Nuxt dev server runs on :3000 by default -- adjust if yours differs.
+# Nuxt dev server runs on :3000 by default
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -50,9 +45,9 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
-# ---------------------------------------------------------------------------
+
 # Matches frontend/app/types/chat.ts::ChatMessage
-# ---------------------------------------------------------------------------
+
 class ChatMessage(BaseModel):
     id: str
     sender: Literal["user", "assistant"]
