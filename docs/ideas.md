@@ -24,13 +24,22 @@ Visual retrieval of similar studies
 Medical entity linking
         ↓
 Clinical knowledge graph
-        ↓
+    
 Guideline / paper / report retrieval
         ↓
 Evidence-grounded LLM synthesis
         ↓
 Findings + similar cases + supporting evidence
 ```
+
+### Core Features
+
+1. A user shall be able to *upload an image* along with a *query about the image*, and recieve a 
+response that's grounded in *information extracted from the image* and from *credible external knowledge sources*.
+
+2. A user shall be able to ask *any medical query* and recive an *evidence grounded response.*
+
+3. The system shall generate *verifiable responses.*
 
 ### System Design
 
